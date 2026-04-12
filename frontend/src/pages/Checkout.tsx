@@ -3,6 +3,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import type { RootState } from '../store';
 import { clearCart } from '../store/cartSlice';
+import api from '../services/api';
+import toast from 'react-hot-toast';
 
 interface FormData {
   fullName: string;
@@ -80,7 +82,7 @@ const Checkout: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const validationErrors = validate();
 
@@ -91,11 +93,33 @@ const Checkout: React.FC = () => {
 
     setIsSubmitting(true);
 
-    // Giả lập gọi API (500ms)
-    setTimeout(() => {
+    try {
+      const payload = {
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        shippingAddr: `${formData.address}, ${formData.city}`,
+        items: cartItems.map(item => ({ id: item.id, quantity: item.quantity }))
+      };
+
+      await api.post('/orders/checkout', payload);
+      
       dispatch(clearCart());
+      toast.success('Đặt hàng thành công!', {
+        style: {
+          borderRadius: '0px',
+          background: '#000',
+          color: '#fff',
+          fontSize: '10px',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase'
+        }
+      });
       navigate('/order-success');
-    }, 500);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi đặt hàng');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputClass = (field: keyof FormErrors) =>

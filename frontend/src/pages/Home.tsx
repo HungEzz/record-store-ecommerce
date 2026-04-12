@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import FeaturedProducts from '../components/FeaturedProducts';
-import { VINYL_DATA } from '../data/products';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../store';
 
 const Home: React.FC = () => {
-  const featuredProducts = VINYL_DATA.slice(0, 4);
+  const allProducts = useSelector((state: RootState) => state.products.items);
+  const featuredProducts = allProducts.filter(p => p.category === 'vinyl').slice(0, 4);
   return (
     <div className="flex flex-col w-full">
       <section className="relative h-[85vh] flex flex-col justify-center items-center text-center px-6">

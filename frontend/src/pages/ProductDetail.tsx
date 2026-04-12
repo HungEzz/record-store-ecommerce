@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../store/cartSlice';
 import { decreaseStock } from '../store/productSlice';
 import FeaturedProducts from '../components/FeaturedProducts';
-import { ALL_PRODUCTS, getProductById } from '../data/products';
+
 import type { RootState } from '../store';
 import toast from 'react-hot-toast';
 
@@ -13,16 +13,24 @@ const ProductDetail: React.FC = () => {
   const dispatch = useDispatch();
   const [isAdded, setIsAdded] = useState(false);
 
+  const allProducts = useSelector((state: RootState) => state.products.items);
+  
   const currentProduct = useMemo(() => {
-    return getProductById(Number(id)) || ALL_PRODUCTS[0];
-  }, [id]);
+    if (allProducts.length === 0) return null;
+    return allProducts.find(p => p.id === Number(id)) || allProducts[0];
+  }, [id, allProducts]);
 
   // Get stock từ Redux store
-  const currentStock = useSelector((state: RootState) => state.products.stock[currentProduct.id] ?? currentProduct.stock);
+  const currentStock = useSelector((state: RootState) => currentProduct ? (state.products.stock[currentProduct.id] ?? currentProduct.stock) : 0);
 
   const relatedProducts = useMemo(() => {
-    return ALL_PRODUCTS.filter(p => p.id !== currentProduct.id).slice(0, 4);
-  }, [currentProduct.id]);
+    if (!currentProduct) return [];
+    return allProducts.filter(p => p.id !== currentProduct.id).slice(0, 4);
+  }, [currentProduct, allProducts]);
+
+  if (!currentProduct) {
+    return <div className="py-40 text-center uppercase tracking-widest text-gray-500 text-sm">Loading...</div>;
+  }
 
   const handleAddToCart = () => {
     if (currentStock <= 0) {

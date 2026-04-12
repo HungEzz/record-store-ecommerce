@@ -16,7 +16,17 @@ import OrderSuccess from './pages/OrderSuccess';
 import ScrollToTop from './components/ScrollToTop';
 import { Toaster } from 'react-hot-toast';
 
+import { useDispatch } from 'react-redux';
+import { fetchProducts } from './store/productSlice';
+import type { AppDispatch } from './store';
+
 const App: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+
+  React.useEffect(() => {
+    dispatch(fetchProducts());
+  }, [dispatch]);
+
   return (
     <Router>
       <ScrollToTop />

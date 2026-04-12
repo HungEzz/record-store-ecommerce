@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import FeaturedProducts from '../components/FeaturedProducts';
 import ProductFilterBar from '../components/ProductFilterBar';
-import { MERCH_DATA } from '../data/products';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../store';
 
 const Merch: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<string>('featured');
@@ -10,8 +11,9 @@ const Merch: React.FC = () => {
 
   const filterOptions = ['all', 'Record Store Exclusive', 'Eco-friendly', 'Premium Care', 'Turntable Essentials', 'Accessories', 'Home Decor'];
 
+  const allProducts = useSelector((state: RootState) => state.products.items);
   const filteredProducts = useMemo(() => {
-    let result = [...MERCH_DATA];
+    let result = allProducts.filter(p => p.category === 'merch');
 
     if (searchQuery.trim()) {
       result = result.filter((p) =>

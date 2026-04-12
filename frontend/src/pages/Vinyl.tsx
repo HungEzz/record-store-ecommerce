@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import FeaturedProducts from '../components/FeaturedProducts';
 import ProductFilterBar from '../components/ProductFilterBar';
-import { VINYL_DATA } from '../data/products';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../store';
 
 const Vinyl: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<string>('featured');
@@ -10,8 +11,9 @@ const Vinyl: React.FC = () => {
 
   const filterOptions = ['all', 'The Beatles', 'Pink Floyd', 'Taylor Swift', 'Mac Miller', 'John Coltrane', 'Miles Davis'];
 
+  const allProducts = useSelector((state: RootState) => state.products.items);
   const filteredProducts = useMemo(() => {
-    let result = [...VINYL_DATA];
+    let result = allProducts.filter(p => p.category === 'vinyl');
 
     if (searchQuery.trim()) {
       result = result.filter((p) =>

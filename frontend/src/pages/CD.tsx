@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import FeaturedProducts from '../components/FeaturedProducts';
 import ProductFilterBar from '../components/ProductFilterBar';
-import { CD_DATA } from '../data/products';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../store';
 
 const CD: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<string>('featured');
@@ -10,8 +11,9 @@ const CD: React.FC = () => {
 
   const filterOptions = ['all', 'The Weeknd', 'Dua Lipa', 'Olivia Rodrigo', 'Daft Punk'];
 
+  const allProducts = useSelector((state: RootState) => state.products.items);
   const filteredProducts = useMemo(() => {
-    let result = [...CD_DATA];
+    let result = allProducts.filter(p => p.category === 'cd');
 
     if (searchQuery.trim()) {
       result = result.filter((p) =>

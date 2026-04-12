@@ -1,23 +1,27 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import { VINYL_DATA, CD_DATA, MERCH_DATA } from '../data/products';
+import api from '../services/api';
+import type { Product } from '../types';
 
 interface ProductStock {
   [key: number]: number;
 }
 
 interface ProductState {
+  items: Product[];
   stock: ProductStock;
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
 }
 
-// Initialize stock from products
-const initialStock: ProductStock = {};
-[...VINYL_DATA, ...CD_DATA, ...MERCH_DATA].forEach(product => {
-  initialStock[product.id] = product.stock;
+export const fetchProducts = createAsyncThunk('products/fetchProducts', async () => {
+  const response = await api.get('/products');
+  return response as unknown as Product[];
 });
 
 const initialState: ProductState = {
-  stock: initialStock,
+  items: [],
+  stock: {},
+  status: 'idle',
 };
 
 const productSlice = createSlice({
@@ -37,6 +41,19 @@ const productSlice = createSlice({
         state.stock[action.payload.id] += action.payload.quantity;
       }
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchProducts.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.items = action.payload;
+        action.payload.forEach((product) => {
+          state.stock[product.id] = product.stock;
+        });
+      })
+      .addCase(fetchProducts.pending, (state) => {
+        state.status = 'loading';
+      });
   },
 });
 

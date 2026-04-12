@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://api.your-backend-domain.com/api', // BE dev sẽ cung cấp link này
+  baseURL: 'http://localhost:3000/api', // Backend local URL
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
