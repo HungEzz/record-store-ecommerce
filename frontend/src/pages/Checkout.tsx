@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import type { RootState } from '../store';
-import { clearCart } from '../store/cartSlice';
+import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { clearPurchasedItems } from '../store/cartSlice';
 import { fetchProducts } from '../store/productSlice';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -25,10 +24,19 @@ interface FormErrors {
 }
 
 const Checkout: React.FC = () => {
-  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const location = useLocation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const totalPrice = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  
+  const cartItems = location.state?.selectedItems || [];
+  
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      navigate('/cart');
+    }
+  }, [cartItems, navigate]);
+
+  const totalPrice = cartItems.reduce((total: number, item: any) => total + (item.price * item.quantity), 0);
 
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -104,8 +112,9 @@ const Checkout: React.FC = () => {
 
       await api.post('/orders/checkout', payload);
       
-      dispatch(clearCart());
-      dispatch(fetchProducts());
+      // Chỉ xóa những món đã được tick thanh toán
+      dispatch(clearPurchasedItems(cartItems.map((item: any) => item.id)));
+      dispatch(fetchProducts() as any);
       toast.success('Đặt hàng thành công!', {
         style: {
           borderRadius: '0px',

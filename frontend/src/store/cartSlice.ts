@@ -35,15 +35,15 @@ const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
-    addToCart: (state, action: PayloadAction<Product>) => {
+    addToCart: (state, action: PayloadAction<Product & { addQuantity?: number }>) => {
       const existingItem = state.items.find(item => item.id === action.payload.id);
+      const quantityToAdd = action.payload.addQuantity || 1;
+
       if (existingItem) {
-        // Khi đã tồn tại, chỉ tăng quantity, không kiểm tra stock ở đây
-        // (Stock được kiểm tra và giảm trước khi dispatch addToCart)
-        existingItem.quantity += 1;
+        existingItem.quantity += quantityToAdd;
       } else {
-        // Khi thêm mới, luôn cho phép add (stock đã được kiểm tra từ component)
-        state.items.push({ ...action.payload, quantity: 1 });
+        const { addQuantity, ...product } = action.payload;
+        state.items.push({ ...product, quantity: quantityToAdd });
       }
       saveState(state.items);
     },
@@ -61,9 +61,13 @@ const cartSlice = createSlice({
     clearCart: (state) => {
       state.items = [];
       saveState(state.items);
+    },
+    clearPurchasedItems: (state, action: PayloadAction<number[]>) => {
+      state.items = state.items.filter(item => !action.payload.includes(item.id));
+      saveState(state.items);
     }
   },
 });
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart } = cartSlice.actions;
+export const { addToCart, removeFromCart, updateQuantity, clearCart, clearPurchasedItems } = cartSlice.actions;
 export default cartSlice.reducer;

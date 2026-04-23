@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../store/cartSlice';
-import { decreaseStock } from '../store/productSlice';
 import FeaturedProducts from '../components/FeaturedProducts';
+import { Minus, Plus } from 'lucide-react';
 
 import type { RootState } from '../store';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch();
   const [isAdded, setIsAdded] = useState(false);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   const allProducts = useSelector((state: RootState) => state.products.items);
   
@@ -20,8 +21,15 @@ const ProductDetail: React.FC = () => {
     return allProducts.find(p => p.id === Number(id)) || allProducts[0];
   }, [id, allProducts]);
 
-  // Get stock từ Redux store
-  const currentStock = useSelector((state: RootState) => currentProduct ? (state.products.stock[currentProduct.id] ?? currentProduct.stock) : 0);
+  // Get tổng stock từ Redux store (dữ liệu thực từ DB)
+  const totalStock = useSelector((state: RootState) => currentProduct ? (state.products.stock[currentProduct.id] ?? currentProduct.stock) : 0);
+
+  // Lấy số lượng sản phẩm này đã có trong giỏ hàng
+  const cartItem = useSelector((state: RootState) => state.cart.items.find(item => item.id === currentProduct?.id));
+  const quantityInCart = cartItem ? cartItem.quantity : 0;
+
+  // Tính toán số lượng còn lại có thể thêm vào giỏ
+  const availableStock = totalStock - quantityInCart;
 
   const relatedProducts = useMemo(() => {
     if (!currentProduct) return [];
@@ -33,8 +41,8 @@ const ProductDetail: React.FC = () => {
   }
 
   const handleAddToCart = () => {
-    if (currentStock <= 0) {
-      toast.error('Sản phẩm đã hết hàng', {
+    if (availableStock <= 0 || selectedQuantity > availableStock) {
+      toast.error(`Bạn đã có ${quantityInCart} sản phẩm trong giỏ hàng. Không thể thêm vào giỏ vì sẽ vượt quá giới hạn mua hàng.`, {
         style: {
           borderRadius: '0px',
           background: '#dc2626',
@@ -47,9 +55,9 @@ const ProductDetail: React.FC = () => {
       return;
     }
 
-    dispatch(addToCart(currentProduct));
-    dispatch(decreaseStock({ id: currentProduct.id, quantity: 1 }));
+    dispatch(addToCart({ ...currentProduct, addQuantity: selectedQuantity }));
     setIsAdded(true);
+    setSelectedQuantity(1); // Reset lại 1 sau khi thêm thành công
     
     toast.success('Đã thêm vào giỏ hàng', {
       style: {
@@ -75,7 +83,7 @@ const ProductDetail: React.FC = () => {
               alt={currentProduct.title} 
               className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700"
             />
-            {currentStock <= 0 && (
+            {totalStock <= 0 && (
               <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
                 <p className="text-white text-2xl font-bold uppercase tracking-widest">Hết hàng</p>
               </div>
@@ -99,9 +107,9 @@ const ProductDetail: React.FC = () => {
             <div className="text-2xl font-bold font-sans text-rs-black mb-4 pb-6 border-b border-rs-border flex justify-between items-center">
               <span>${currentProduct.price.toFixed(2)}</span>
               <span className={`text-xs font-bold uppercase tracking-widest px-3 py-1 ${
-                currentStock <= 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                totalStock <= 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
               }`}>
-                {currentStock <= 0 ? 'Hết hàng' : `Còn ${currentStock}`}
+                {totalStock <= 0 ? 'Hết hàng' : `Kho: ${totalStock}`}
               </span>
             </div>
 
@@ -111,18 +119,47 @@ const ProductDetail: React.FC = () => {
               </p>
             </div>
 
+            <div className="flex flex-col gap-4 mb-6">
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold">Số lượng</span>
+                <div className="flex items-center border border-rs-border w-fit">
+                  <button
+                    onClick={() => setSelectedQuantity(Math.max(1, selectedQuantity - 1))}
+                    className="p-3 hover:bg-gray-100 transition-colors disabled:opacity-30"
+                    disabled={selectedQuantity <= 1}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="px-4 text-sm font-semibold font-sans">{selectedQuantity}</span>
+                  <button
+                    onClick={() => setSelectedQuantity(Math.min(availableStock, selectedQuantity + 1))}
+                    className="p-3 hover:bg-gray-100 transition-colors disabled:opacity-30"
+                    disabled={selectedQuantity >= availableStock || availableStock === 0}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+              
+              {selectedQuantity >= availableStock && availableStock > 0 && (
+                <p className="text-red-500 text-[10px] uppercase tracking-wider font-bold">
+                  Số lượng bạn chọn đã đạt mức tối đa của sản phẩm này
+                </p>
+              )}
+            </div>
+
             <button 
               onClick={handleAddToCart}
-              disabled={isAdded || currentStock <= 0}
+              disabled={isAdded || availableStock <= 0}
               className={`w-full py-5 uppercase tracking-[0.3em] text-[11px] font-bold transition-all duration-500 ${
-                currentStock <= 0
+                availableStock <= 0
                   ? 'bg-gray-300 text-gray-600 cursor-not-allowed' 
                   : isAdded 
                   ? 'bg-green-600 text-white cursor-default' 
                   : 'bg-black text-white hover:bg-zinc-800'
               }`}
             >
-              {currentStock <= 0 ? 'Hết hàng' : isAdded ? 'Đã thêm thành công' : 'Thêm vào giỏ hàng'}
+              {totalStock <= 0 ? 'Hết hàng' : availableStock <= 0 ? 'Đã thêm tối đa' : isAdded ? 'Đã thêm thành công' : 'Thêm vào giỏ hàng'}
             </button>
 
             <div className="mt-12 pt-8 border-t border-rs-border">
