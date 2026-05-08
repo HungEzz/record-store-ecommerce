@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 import { store } from '../store';
 import { logout } from '../store/userSlice';
