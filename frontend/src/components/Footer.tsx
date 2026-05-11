@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Music, Mail, Phone, MapPin } from 'lucide-react';
+import { FaInstagram, FaTwitter, FaYoutube } from 'react-icons/fa';
 
 const Footer: React.FC = () => {
   const year = new Date().getFullYear();
 
   return (
-    <footer style={{ background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', paddingTop: 64, paddingBottom: 32, marginTop: 'auto' }}>
+    <footer style={{ background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', paddingTop: 14, paddingBottom: 12, marginTop: 'auto' }}>
       <div className="container-main">
         {/* Top row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 48, marginBottom: 56 }}>
@@ -28,15 +29,15 @@ const Footer: React.FC = () => {
             {/* Social */}
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                // { Icon: Instagram, href: '#' },
-                // { Icon: Twitter, href: '#' },
-                // { Icon: Youtube, href: '#' },
+                { Icon: FaInstagram, href: '#' },
+                { Icon: FaTwitter, href: '#' },
+                { Icon: FaYoutube, href: '#' },
               ].map(({ Icon, href }, i) => (
                 <a
                   key={i}
                   href={href}
                   style={{
-                    width: 36, height: 36,
+                    width: 45, height: 45,
                     borderRadius: 'var(--radius-full)',
                     background: 'var(--bg-card)',
                     border: '1px solid var(--border)',
@@ -58,7 +59,7 @@ const Footer: React.FC = () => {
                     (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border)';
                   }}
                 >
-                  {/* <Icon size={16} /> */}
+                  <Icon size={16} />
                 </a>
               ))}
             </div>
