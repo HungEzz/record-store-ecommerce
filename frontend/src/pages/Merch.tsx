@@ -3,77 +3,48 @@ import FeaturedProducts from '../components/FeaturedProducts';
 import ProductFilterBar from '../components/ProductFilterBar';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../store';
+import PageHeader from './PageHeader';
 
-const Merch: React.FC = () => {
-  const [sortOrder, setSortOrder] = useState<string>('featured');
-  const [selectedBrand, setSelectedBrand] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-
+export const Merch: React.FC = () => {
+  const [sortOrder, setSortOrder] = useState('featured');
+  const [selectedBrand, setSelectedBrand] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+ 
   const filterOptions = ['all', 'Record Store Exclusive', 'Eco-friendly', 'Premium Care', 'Turntable Essentials', 'Accessories', 'Home Decor'];
-
   const allProducts = useSelector((state: RootState) => state.products.items);
+ 
   const filteredProducts = useMemo(() => {
     let result = allProducts.filter(p => p.category === 'merch');
-
-    if (searchQuery.trim()) {
-      result = result.filter((p) =>
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.artist.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (selectedBrand !== 'all') {
-      result = result.filter((p) => p.artist === selectedBrand);
-    }
-
-    if (sortOrder === 'price-low') {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sortOrder === 'price-high') {
-      result.sort((a, b) => b.price - a.price);
-    } else if (sortOrder === 'az') {
-      result.sort((a, b) => a.title.localeCompare(b.title));
-    }
-
+    if (searchQuery.trim()) result = result.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.artist.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (selectedBrand !== 'all') result = result.filter(p => p.artist === selectedBrand);
+    if (sortOrder === 'price-low') result.sort((a, b) => a.price - b.price);
+    else if (sortOrder === 'price-high') result.sort((a, b) => b.price - a.price);
+    else if (sortOrder === 'az') result.sort((a, b) => a.title.localeCompare(b.title));
     return result;
   }, [allProducts, sortOrder, selectedBrand, searchQuery]);
-
+ 
   return (
-    <div className="flex-grow bg-white">
-      <section className="pt-20 pb-10 px-6 text-center border-b border-rs-border">
-        <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-gray-400 mb-4 block">Official Collection</span>
-        <h1 className="text-5xl md:text-7xl font-bold uppercase tracking-[0.1em] font-display">Merchandise</h1>
-      </section>
-
-      <div className="max-w-[1400px] mx-auto py-10 px-6">
-        <ProductFilterBar
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortOrder={sortOrder}
-          onSortChange={setSortOrder}
-          filterOptions={filterOptions}
-          selectedFilter={selectedBrand}
-          onFilterSelect={setSelectedBrand}
-        />
-
-        <div className="mb-20">
-          <FeaturedProducts products={filteredProducts} title="" />
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-20 text-[11px] uppercase tracking-[0.2em] text-gray-400">
-              Không tìm thấy sản phẩm phù hợp.
-            </div>
-          )}
-        </div>
-      </div>
-
-      <section className="bg-rs-gray-light py-20 px-6 mt-10">
-        <div className="max-w-[800px] mx-auto text-center">
-          <h2 className="text-2xl font-bold uppercase tracking-widest font-display mb-6 text-rs-black">Chính sách vận chuyển</h2>
-          <p className="text-sm text-gray-500 font-sans leading-relaxed">
-            Tất cả các mặt hàng merchandise được vận chuyển toàn quốc. Đối với áo thun và túi tote, vui lòng kiểm tra bảng size kỹ trước khi đặt hàng. 
-            Chúng tôi hỗ trợ đổi trả trong vòng 7 ngày nếu có lỗi từ nhà sản xuất.
+    <div style={{ background: 'var(--bg-primary)', minHeight: '100vh' }}>
+      <PageHeader eyebrow="Official Collection" title="Merchandise" subtitle="Exclusive apparel and accessories for music lovers" icon={<span style={{ fontSize: 32 }}>👕</span>} color="var(--warm-amber)" />
+      <div className="container-main section">
+        <ProductFilterBar searchValue={searchQuery} onSearchChange={setSearchQuery} sortOrder={sortOrder} onSortChange={setSortOrder} filterOptions={filterOptions} selectedFilter={selectedBrand} onFilterSelect={setSelectedBrand} totalCount={filteredProducts.length} />
+        <FeaturedProducts products={filteredProducts} columns={4} />
+ 
+        {/* Shipping note */}
+        <div style={{
+          marginTop: 64,
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-xl)',
+          padding: '32px 40px',
+          textAlign: 'center',
+        }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>Shipping Policy</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 600, margin: '0 auto', lineHeight: 1.7 }}>
+            All merchandise ships nationwide. Check the size chart before ordering. We support exchanges within 7 days for manufacturer defects.
           </p>
         </div>
-      </section>
+      </div>
     </div>
   );
 };

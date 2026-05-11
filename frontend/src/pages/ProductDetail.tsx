@@ -2,9 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../store/cartSlice';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, ArrowLeft, Heart, Share2, Truck, RefreshCw, Shield } from 'lucide-react';
 import FeaturedProducts from '../components/FeaturedProducts';
-
 import type { RootState } from '../store';
 import toast from 'react-hot-toast';
 
@@ -13,202 +12,291 @@ const ProductDetail: React.FC = () => {
   const dispatch = useDispatch();
   const [isAdded, setIsAdded] = useState(false);
   const [selectedQty, setSelectedQty] = useState(1);
+  const [wished, setWished] = useState(false);
 
   const allProducts = useSelector((state: RootState) => state.products.items);
   const cartItems = useSelector((state: RootState) => state.cart.items);
+  const productsStatus = useSelector((state: RootState) => state.products.status);
 
   const currentProduct = useMemo(() => {
-    if (allProducts.length === 0) return null;
+    if (!allProducts.length) return null;
     return allProducts.find(p => p.id === Number(id)) ?? null;
   }, [id, allProducts]);
 
-  // Stock thực tế từ backend (qua Redux)
   const currentStock = useSelector((state: RootState) =>
     currentProduct ? (state.products.stock[currentProduct.id] ?? currentProduct.stock) : 0
   );
-
-  // Số lượng đang có trong giỏ hàng
-  const inCartQty = useMemo(() =>
-    cartItems.find(i => i.id === currentProduct?.id)?.quantity ?? 0,
-    [cartItems, currentProduct]
-  );
-
-  // Số lượng tối đa còn có thể thêm
+  const inCartQty = useMemo(() => cartItems.find(i => i.id === currentProduct?.id)?.quantity ?? 0, [cartItems, currentProduct]);
   const maxAddable = Math.max(0, currentStock - inCartQty);
 
   const relatedProducts = useMemo(() => {
     if (!currentProduct) return [];
-    return allProducts.filter(p => p.id !== currentProduct.id).slice(0, 4);
+    return allProducts.filter(p => p.category === currentProduct.category && p.id !== currentProduct.id).slice(0, 4);
   }, [currentProduct, allProducts]);
 
-  const productsLoaded = useSelector((state: RootState) => state.products.status);
-
-  if (productsLoaded === 'loading' || productsLoaded === 'idle') {
-    return <div className="py-40 text-center uppercase tracking-widest text-gray-500 text-sm">Đang tải...</div>;
-  }
-
-  if (!currentProduct) {
+  if (productsStatus === 'loading' || productsStatus === 'idle') {
     return (
-      <div className="py-40 text-center">
-        <p className="text-4xl font-bold uppercase font-display mb-4">404</p>
-        <p className="text-sm uppercase tracking-widest text-gray-500 mb-8">Không tìm thấy sản phẩm này.</p>
-        <a href="/vinyl" className="text-[10px] font-bold uppercase tracking-widest border-b border-black pb-1 hover:opacity-50 transition-opacity">
-          Quay lại cửa hàng
-        </a>
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div className="animate-spin-slow" style={{ width: 48, height: 48, borderRadius: '50%', background: 'radial-gradient(circle, #333 0%, #333 28%, var(--accent) 28%, var(--accent) 32%, #1a1a1a 32%)' }} />
+          <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading...</p>
+        </div>
       </div>
     );
   }
 
-  const handleAddToCart = () => {
-    if (currentStock <= 0) {
-      toast.error('Sản phẩm đã hết hàng', {
-        style: { borderRadius: '0px', background: '#dc2626', color: '#fff', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }
-      });
-      return;
-    }
-
-    if (inCartQty + selectedQty > currentStock) {
-      toast.error(
-        inCartQty > 0
-          ? `Bạn đã có ${inCartQty} sản phẩm trong giỏ hàng. Không thể thêm vào giỏ vì sẽ vượt quá giới hạn mua hàng.`
-          : 'Số lượng vượt quá tồn kho.',
-        { style: { borderRadius: '0px', background: '#dc2626', color: '#fff', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' } }
-      );
-      return;
-    }
-
-    dispatch(addToCart({ product: currentProduct, quantity: selectedQty }));
-    setIsAdded(true);
-    setSelectedQty(1);
-
-    toast.success(`Đã thêm ${selectedQty > 1 ? `${selectedQty}x ` : ''}${currentProduct.title} vào giỏ hàng`, {
-      style: { borderRadius: '0px', background: '#000', color: '#fff', fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase' }
-    });
-
-    setTimeout(() => setIsAdded(false), 2000);
-  };
+  if (!currentProduct) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 32 }}>
+        <span style={{ fontSize: 56 }}>🎵</span>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>404</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>Product not found.</p>
+        <Link to="/vinyl" style={{ background: 'var(--accent)', color: '#000', borderRadius: 'var(--radius-full)', padding: '12px 24px', textDecoration: 'none', fontWeight: 700, fontSize: 14 }}>
+          Browse Collection
+        </Link>
+      </div>
+    );
+  }
 
   const isOutOfStock = currentStock <= 0;
   const isAtMax = maxAddable <= 0 && !isOutOfStock;
 
+  const handleAddToCart = () => {
+    if (isOutOfStock || isAtMax) return;
+    if (inCartQty + selectedQty > currentStock) { toast.error('Exceeds available stock'); return; }
+    dispatch(addToCart({ product: currentProduct, quantity: selectedQty }));
+    setIsAdded(true);
+    setSelectedQty(1);
+    toast.success(`Added ${selectedQty > 1 ? `${selectedQty}× ` : ''}${currentProduct.title}`, {
+      style: { borderRadius: '12px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border)' },
+    });
+    setTimeout(() => setIsAdded(false), 2500);
+  };
+
+  const catColors: Record<string, string> = { vinyl: 'var(--warm-purple)', cd: 'var(--accent)', merch: 'var(--warm-amber)' };
+  const catColor = catColors[currentProduct.category || 'vinyl'] || 'var(--accent)';
+
   return (
-    <div className="flex flex-col w-full">
-      <div className="max-w-[1200px] mx-auto px-6 py-12 md:py-20 w-full">
-        <div className="flex flex-col md:flex-row gap-10 md:gap-16">
-          <div className="w-full md:w-1/2 bg-rs-gray-light border border-rs-border overflow-hidden relative">
-            <img
-              src={currentProduct.imgUrl}
-              alt={currentProduct.title}
-              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700"
-            />
-            {isOutOfStock && (
-              <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
-                <p className="text-white text-2xl font-bold uppercase tracking-widest">Hết hàng</p>
+    <div style={{ background: 'var(--bg-primary)', minHeight: '100vh' }}>
+      <div className="container-main" style={{ paddingTop: 32, paddingBottom: 80 }}>
+        {/* Breadcrumb */}
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32, fontSize: 13, color: 'var(--text-muted)' }}>
+          <Link to="/" style={{ color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+            onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--text-primary)')}
+            onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-muted)')}>
+            Home
+          </Link>
+          <span>/</span>
+          <Link to={`/${currentProduct.category}`} style={{ color: 'var(--text-muted)', textDecoration: 'none', textTransform: 'capitalize', transition: 'color 0.2s' }}
+            onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--text-primary)')}
+            onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-muted)')}>
+            {currentProduct.category}
+          </Link>
+          <span>/</span>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{currentProduct.title}</span>
+        </nav>
+
+        {/* Main layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'start' }}>
+          {/* Image */}
+          <div style={{ position: 'sticky', top: 96 }}>
+            <div style={{
+              borderRadius: 'var(--radius-xl)',
+              overflow: 'hidden',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border)',
+              aspectRatio: '1',
+              position: 'relative',
+            }}>
+              <img
+                src={currentProduct.imgUrl}
+                alt={currentProduct.title}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.5s ease' }}
+                onMouseEnter={e => ((e.currentTarget as HTMLImageElement).style.transform = 'scale(1.04)')}
+                onMouseLeave={e => ((e.currentTarget as HTMLImageElement).style.transform = 'scale(1)')}
+              />
+
+              {isOutOfStock && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ background: 'rgba(244,63,94,0.9)', color: '#fff', fontSize: 14, fontWeight: 700, padding: '8px 20px', borderRadius: 'var(--radius-full)', letterSpacing: '0.08em' }}>
+                    SOLD OUT
+                  </span>
+                </div>
+              )}
+
+              {/* Category pill */}
+              <div style={{
+                position: 'absolute', top: 16, left: 16,
+                background: `${catColor}22`, backdropFilter: 'blur(12px)',
+                color: catColor,
+                border: `1px solid ${catColor}44`,
+                borderRadius: 'var(--radius-full)',
+                padding: '4px 14px',
+                fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}>
+                {currentProduct.category}
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="w-full md:w-1/2 flex flex-col justify-start pt-4 md:pt-8">
-            <nav className="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-8 font-sans">
-              <Link to="/" className="hover:text-black transition-colors">Home</Link>
-              <span className="mx-2">/</span>
-              <Link to={`/${currentProduct.category}`} className="hover:text-black transition-colors uppercase">{currentProduct.category}</Link>
-            </nav>
+          {/* Info */}
+          <div style={{ animation: 'fadeUp 0.5s ease both' }}>
+            {/* Artist */}
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 8, fontStyle: 'italic' }}>{currentProduct.artist}</p>
 
-            <h1 className="text-4xl md:text-5xl font-bold uppercase tracking-wide font-display text-rs-black mb-2 leading-[1.1]">
+            {/* Title */}
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1, marginBottom: 20, letterSpacing: '-0.02em' }}>
               {currentProduct.title}
             </h1>
-            <h2 className="text-xl md:text-2xl text-gray-400 font-sans mb-8 italic">
-              {currentProduct.artist}
-            </h2>
 
-            <div className="text-2xl font-bold font-sans text-rs-black mb-4 pb-6 border-b border-rs-border flex justify-between items-center">
-              <span>${currentProduct.price.toFixed(2)}</span>
-              <span className={`text-xs font-bold uppercase tracking-widest px-3 py-1 ${
-                isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-              }`}>
-                {isOutOfStock ? 'Hết hàng' : `Còn ${currentStock}`}
+            {/* Price + stock row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, color: 'var(--text-primary)' }}>
+                ${currentProduct.price.toFixed(2)}
+              </span>
+              <span style={{
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: 12, fontWeight: 700,
+                background: isOutOfStock ? 'rgba(244,63,94,0.12)' : 'var(--accent-soft)',
+                color: isOutOfStock ? 'var(--warm-rose)' : 'var(--accent)',
+                border: `1px solid ${isOutOfStock ? 'rgba(244,63,94,0.3)' : 'rgba(29,185,84,0.3)'}`,
+              }}>
+                {isOutOfStock ? 'Out of Stock' : `${currentStock} in stock`}
               </span>
             </div>
 
-            <div className="mb-10">
-              <p className="text-sm text-gray-600 font-sans leading-relaxed">
+            {/* Description */}
+            {currentProduct.description && (
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: 28 }}>
                 {currentProduct.description}
               </p>
-            </div>
+            )}
 
-            {/* Quantity Selector */}
+            {/* Qty selector */}
             {!isOutOfStock && (
-              <div className="mb-6">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold mb-3">Số lượng</p>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center border border-rs-border">
-                    <button
-                      onClick={() => setSelectedQty(q => Math.max(1, q - 1))}
-                      disabled={selectedQty <= 1}
-                      className="px-4 py-3 hover:bg-gray-100 transition-colors disabled:opacity-30"
-                    >
-                      <Minus size={14} />
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Quantity</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-full)',
+                    overflow: 'hidden',
+                    background: 'var(--bg-secondary)',
+                  }}>
+                    <button onClick={() => setSelectedQty(q => Math.max(1, q - 1))} disabled={selectedQty <= 1}
+                      style={{ width: 42, height: 42, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: selectedQty <= 1 ? 0.3 : 1 }}>
+                      <Minus size={16} />
                     </button>
-                    <span className="px-6 py-3 text-sm font-semibold font-sans min-w-[3rem] text-center">{selectedQty}</span>
-                    <button
-                      onClick={() => setSelectedQty(q => Math.min(maxAddable, q + 1))}
-                      disabled={selectedQty >= maxAddable}
-                      className="px-4 py-3 hover:bg-gray-100 transition-colors disabled:opacity-30"
-                    >
-                      <Plus size={14} />
+                    <span style={{ padding: '0 20px', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', minWidth: 32, textAlign: 'center' }}>{selectedQty}</span>
+                    <button onClick={() => setSelectedQty(q => Math.min(maxAddable, q + 1))} disabled={selectedQty >= maxAddable}
+                      style={{ width: 42, height: 42, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: selectedQty >= maxAddable ? 0.3 : 1 }}>
+                      <Plus size={16} />
                     </button>
                   </div>
-                  {isAtMax && (
-                    <p className="text-[10px] text-amber-600 uppercase tracking-wider font-bold">
-                      Số lượng bạn chọn đã đạt mức tối đa của sản phẩm này
-                    </p>
-                  )}
+                  {isAtMax && <p style={{ fontSize: 12, color: 'var(--warm-amber)' }}>Maximum quantity reached</p>}
                 </div>
               </div>
             )}
 
-            <button
-              onClick={handleAddToCart}
-              disabled={isAdded || isOutOfStock || isAtMax}
-              className={`w-full py-5 uppercase tracking-[0.3em] text-[11px] font-bold transition-all duration-500 ${
-                isOutOfStock
-                  ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                  : isAtMax
-                  ? 'bg-amber-100 text-amber-700 cursor-not-allowed'
-                  : isAdded
-                  ? 'bg-green-600 text-white cursor-default'
-                  : 'bg-black text-white hover:bg-zinc-800'
-              }`}
-            >
-              {isOutOfStock
-                ? 'Hết hàng'
-                : isAtMax
-                ? 'Đã đạt giới hạn trong giỏ'
-                : isAdded
-                ? 'Đã thêm thành công'
-                : 'Thêm vào giỏ hàng'}
-            </button>
+            {/* CTA buttons */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
+              <button
+                onClick={handleAddToCart}
+                disabled={isAdded || isOutOfStock || isAtMax}
+                style={{
+                  flex: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  background: isOutOfStock ? 'var(--bg-secondary)' : isAtMax ? 'rgba(245,158,11,0.15)' : isAdded ? 'rgba(29,185,84,0.15)' : 'var(--accent)',
+                  color: isOutOfStock ? 'var(--text-muted)' : isAtMax ? 'var(--warm-amber)' : isAdded ? 'var(--accent)' : '#000',
+                  border: `1px solid ${isAdded || isAtMax ? (isAtMax ? 'rgba(245,158,11,0.4)' : 'rgba(29,185,84,0.4)') : 'transparent'}`,
+                  borderRadius: 'var(--radius-full)',
+                  padding: '16px 28px',
+                  fontSize: 15, fontWeight: 700,
+                  cursor: isOutOfStock || isAtMax ? 'not-allowed' : 'pointer',
+                  boxShadow: !isOutOfStock && !isAtMax && !isAdded ? 'var(--shadow-accent)' : 'none',
+                  transition: 'all 0.25s ease',
+                }}
+                onMouseEnter={e => { if (!isOutOfStock && !isAtMax && !isAdded) (e.currentTarget as HTMLElement).style.background = 'var(--accent-dim)'; }}
+                onMouseLeave={e => { if (!isOutOfStock && !isAtMax && !isAdded) (e.currentTarget as HTMLElement).style.background = 'var(--accent)'; }}
+              >
+                <ShoppingBag size={18} />
+                {isOutOfStock ? 'Out of Stock' : isAtMax ? 'Cart Limit Reached' : isAdded ? '✓ Added!' : `Add to Cart — $${(currentProduct.price * selectedQty).toFixed(2)}`}
+              </button>
 
-            <div className="mt-12 pt-8 border-t border-rs-border">
-              <div className="grid grid-cols-2 gap-8 text-[10px] uppercase tracking-widest font-bold text-gray-400">
-                <div>
-                  <p className="mb-2 text-black">Vận chuyển</p>
-                  <p className="font-medium leading-relaxed">Giao hàng miễn phí cho đơn hàng trên $100.</p>
+              <button
+                onClick={() => setWished(w => !w)}
+                style={{
+                  width: 52, height: 52,
+                  borderRadius: 'var(--radius-full)',
+                  border: '1px solid var(--border)',
+                  background: wished ? 'rgba(244,63,94,0.1)' : 'var(--bg-secondary)',
+                  color: wished ? 'var(--warm-rose)' : 'var(--text-muted)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                }}
+              >
+                <Heart size={20} fill={wished ? 'var(--warm-rose)' : 'none'} />
+              </button>
+
+              <button
+                style={{
+                  width: 52, height: 52,
+                  borderRadius: 'var(--radius-full)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                }}
+              >
+                <Share2 size={18} />
+              </button>
+            </div>
+
+            {/* Benefits */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { Icon: Truck, text: 'Free shipping on orders over $100' },
+                { Icon: RefreshCw, text: '30-day returns for sealed items' },
+                { Icon: Shield, text: 'Authentic products guaranteed' },
+              ].map(({ Icon, text }, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Icon size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{text}</span>
                 </div>
-                <div>
-                  <p className="mb-2 text-black">Đổi trả</p>
-                  <p className="font-medium leading-relaxed">Hoàn trả trong vòng 30 ngày nếu còn nguyên seal.</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
+
+        {/* Related products */}
+        {relatedProducts.length > 0 && (
+          <div style={{ marginTop: 80, paddingTop: 64, borderTop: '1px solid var(--border)' }}>
+            <FeaturedProducts
+              products={relatedProducts}
+              title="You Might Also Like"
+              subtitle="Related Items"
+              viewAllLink={`/${currentProduct.category}`}
+              columns={4}
+            />
+          </div>
+        )}
       </div>
 
-      <div className="border-t border-rs-border mt-10">
-        <FeaturedProducts products={relatedProducts} title="Có thể bạn cũng thích" />
-      </div>
+      <style>{`
+        @media (max-width: 900px) {
+          .container-main > div[style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+          .container-main > div[style*="position: sticky"] {
+            position: static !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

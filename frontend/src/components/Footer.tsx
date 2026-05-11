@@ -1,45 +1,204 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Music, Mail, Phone, MapPin } from 'lucide-react';
 
 const Footer: React.FC = () => {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="bg-rs-black text-white pt-16 pb-8 px-6 border-t border-rs-border mt-auto">
-      <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-        <div className="md:col-span-2">
-          <h3 className="text-2xl font-bold tracking-widest uppercase font-display mb-6">
-            Record Store
-          </h3>
-          <p className="text-gray-400 text-sm font-sans max-w-sm leading-relaxed">
-            Nơi cung cấp các bản phát hành đĩa than mới nhất, các ấn bản giới hạn và các mặt hàng độc quyền dành cho những người đam mê âm nhạc.
-          </p>
+    <footer style={{ background: 'var(--bg-secondary)', borderTop: '1px solid var(--border)', paddingTop: 64, paddingBottom: 32, marginTop: 'auto' }}>
+      <div className="container-main">
+        {/* Top row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 48, marginBottom: 56 }}>
+          {/* Brand */}
+          <div style={{ gridColumn: '1 / 2' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'radial-gradient(circle, #333 0%, #333 28%, var(--accent) 28%, var(--accent) 32%, #1a1a1a 32%)',
+                boxShadow: '0 0 16px rgba(29,185,84,0.3)',
+              }} />
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>
+                Record<span style={{ color: 'var(--accent)' }}>.</span>Store
+              </span>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 24, maxWidth: 260 }}>
+              Your destination for premium vinyl records, CDs, and exclusive music merchandise.
+            </p>
+            {/* Social */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                // { Icon: Instagram, href: '#' },
+                // { Icon: Twitter, href: '#' },
+                // { Icon: Youtube, href: '#' },
+              ].map(({ Icon, href }, i) => (
+                <a
+                  key={i}
+                  href={href}
+                  style={{
+                    width: 36, height: 36,
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-muted)',
+                    transition: 'all 0.2s ease',
+                    textDecoration: 'none',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = 'var(--accent)';
+                    (e.currentTarget as HTMLAnchorElement).style.color = '#000';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--accent)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-card)';
+                    (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-muted)';
+                    (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border)';
+                  }}
+                >
+                  {/* <Icon size={16} /> */}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Shop */}
+          <div>
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20, letterSpacing: '0.04em' }}>Shop</h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { to: '/vinyl', label: 'Vinyl Records' },
+                { to: '/cd', label: 'CDs' },
+                { to: '/merch', label: 'Merchandise' },
+                { to: '/cart', label: 'Shopping Cart' },
+              ].map(({ to, label }) => (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, transition: 'color 0.2s' }}
+                    onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--accent)')}
+                    onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-secondary)')}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Support */}
+          <div>
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20, letterSpacing: '0.04em' }}>Support</h4>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { to: '/contact', label: 'Contact Us' },
+                { to: '/shipping-returns', label: 'Shipping & Returns' },
+                { to: '/faq', label: 'FAQ' },
+                { to: '/account', label: 'My Account' },
+              ].map(({ to, label }) => (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, transition: 'color 0.2s' }}
+                    onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--accent)')}
+                    onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-secondary)')}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact info */}
+          <div>
+            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 20, letterSpacing: '0.04em' }}>Get in Touch</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { Icon: Mail, text: 'support@recordstore.vn' },
+                { Icon: Phone, text: '+84 123 456 789' },
+                { Icon: MapPin, text: '123 Music St, District 1, HCMC' },
+              ].map(({ Icon, text }, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <Icon size={15} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 1 }} />
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Newsletter mini */}
+            <div style={{ marginTop: 24 }}>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Subscribe for new releases</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  placeholder="Your email"
+                  style={{
+                    flex: 1,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-full)',
+                    padding: '8px 14px',
+                    fontSize: 12,
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                  }}
+                  onFocus={e => ((e.target as HTMLInputElement).style.borderColor = 'var(--accent)')}
+                  onBlur={e => ((e.target as HTMLInputElement).style.borderColor = 'var(--border)')}
+                />
+                <button
+                  style={{
+                    background: 'var(--accent)',
+                    border: 'none',
+                    borderRadius: 'var(--radius-full)',
+                    padding: '8px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#000',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Music size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <h4 className="font-bold uppercase tracking-wider font-display mb-6 text-sm">Cửa hàng</h4>
-          <ul className="space-y-4 text-sm text-gray-400 font-sans">
-            <li><Link to="/vinyl" className="hover:text-white transition-colors">Vinyl</Link></li>
-            <li><Link to="/cd" className="hover:text-white transition-colors">CDs</Link></li>
-            <li><Link to="/merch" className="hover:text-white transition-colors">Merch</Link></li>
-          </ul>
-        </div>
+        {/* Divider */}
+        <hr className="divider" />
 
-        <div>
-          <h4 className="font-bold uppercase tracking-wider font-display mb-6 text-sm">Hỗ trợ</h4>
-          <ul className="space-y-4 text-sm text-gray-400 font-sans">
-            <li><Link to="/contact" className="hover:text-white transition-colors">Liên hệ</Link></li>
-            <li><Link to="/shipping-returns" className="hover:text-white transition-colors">Vận chuyển & Đổi trả</Link></li>
-            <li><Link to="/faq" className="hover:text-white transition-colors">Câu hỏi thường gặp</Link></li>
-          </ul>
+        {/* Bottom row */}
+        <div style={{ paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>© {year} Record Store. All rights reserved.</p>
+          <div style={{ display: 'flex', gap: 24 }}>
+            {['Privacy', 'Terms', 'Cookies'].map(t => (
+              <a key={t} href="#" style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+                onMouseEnter={e => ((e.target as HTMLElement).style.color = 'var(--text-primary)')}
+                onMouseLeave={e => ((e.target as HTMLElement).style.color = 'var(--text-muted)')}>
+                {t}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-[1200px] mx-auto pt-8 border-t border-gray-800 text-center md:text-left text-xs text-gray-500 font-sans uppercase tracking-widest flex flex-col md:flex-row justify-between items-center gap-4">
-        <p>© 2026 Record Store. All rights reserved.</p>
-        <div className="flex gap-6">
-          <a href="#" className="hover:text-white transition-colors">Điều khoản</a>
-          <a href="#" className="hover:text-white transition-colors">Bảo mật</a>
-        </div>
-      </div>
+      <style>{`
+        @media (max-width: 900px) {
+          footer > div > div:first-child {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          footer > div > div:first-child > div:first-child {
+            grid-column: 1 / -1 !important;
+          }
+        }
+        @media (max-width: 560px) {
+          footer > div > div:first-child {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </footer>
   );
 };
