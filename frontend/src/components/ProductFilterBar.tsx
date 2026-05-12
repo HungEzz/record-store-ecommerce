@@ -1,21 +1,22 @@
-import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, SlidersHorizontal, ChevronDown, X } from 'lucide-react';
 
 interface ProductFilterBarProps {
   searchValue: string;
-  onSearchChange: (value: string) => void;
+  onSearchChange: (v: string) => void;
   sortOrder: string;
-  onSortChange: (value: string) => void;
+  onSortChange: (v: string) => void;
   filterOptions?: string[];
   selectedFilter?: string;
-  onFilterSelect?: (value: string) => void;
+  onFilterSelect?: (v: string) => void;
+  totalCount?: number;
 }
 
 const SORT_OPTIONS = [
-  { label: 'Nổi bật', value: 'featured' },
-  { label: 'Giá thấp đến cao', value: 'price-low' },
-  { label: 'Giá cao đến thấp', value: 'price-high' },
-  { label: 'Tên A-Z', value: 'az' },
+  { label: 'Featured', value: 'featured' },
+  { label: 'Price: Low → High', value: 'price-low' },
+  { label: 'Price: High → Low', value: 'price-high' },
+  { label: 'A → Z', value: 'az' },
 ];
 
 const ProductFilterBar: React.FC<ProductFilterBarProps> = ({
@@ -26,56 +27,143 @@ const ProductFilterBar: React.FC<ProductFilterBarProps> = ({
   filterOptions,
   selectedFilter,
   onFilterSelect,
+  totalCount,
 }) => {
+  const [sortOpen, setSortOpen] = useState(false);
+
+  const currentSort = SORT_OPTIONS.find(o => o.value === sortOrder) || SORT_OPTIONS[0];
+
   return (
-    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-t border-b border-rs-border py-4 mb-8 gap-4">
-      <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-        {filterOptions && onFilterSelect && (
-          <div className="relative group">
-            <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest hover:opacity-50 transition-opacity">
-              Lọc: {selectedFilter === 'all' ? 'Tất cả' : selectedFilter} <ChevronDown size={12} />
-            </button>
-            <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-rs-border shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-40">
-              {filterOptions.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => onFilterSelect(option)}
-                  className="block w-full text-left px-4 py-3 text-[10px] uppercase tracking-widest hover:bg-rs-gray-light"
-                >
-                  {option === 'all' ? 'Tất cả' : option}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center w-full max-w-[360px] border border-rs-border p-3">
+    <div style={{ marginBottom: 32 }}>
+      {/* Top row: search + controls */}
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Search */}
+        <div className="search-bar" style={{ flex: '1 1 240px', maxWidth: 360 }}>
+          <Search size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <input
-            type="text"
             value={searchValue}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Tìm kiếm sản phẩm..."
-            className="w-full text-[10px] uppercase tracking-[0.2em] font-sans focus:outline-none"
+            onChange={e => onSearchChange(e.target.value)}
+            placeholder="Search albums, artists..."
           />
+          {searchValue && (
+            <button
+              onClick={() => onSearchChange('')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
+          {/* Sort dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setSortOpen(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-full)',
+                padding: '9px 16px',
+                fontSize: 13, fontWeight: 500,
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <SlidersHorizontal size={15} style={{ color: 'var(--text-muted)' }} />
+              {currentSort.label}
+              <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: sortOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+
+            {sortOpen && (
+              <>
+                <div onClick={() => setSortOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-lg)',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 10,
+                  minWidth: 200,
+                  overflow: 'hidden',
+                }}>
+                  {SORT_OPTIONS.map(o => (
+                    <button
+                      key={o.value}
+                      onClick={() => { onSortChange(o.value); setSortOpen(false); }}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        padding: '11px 16px', fontSize: 13,
+                        color: o.value === sortOrder ? 'var(--accent)' : 'var(--text-primary)',
+                        background: o.value === sortOrder ? 'var(--accent-soft)' : 'none',
+                        border: 'none', cursor: 'pointer',
+                        fontWeight: o.value === sortOrder ? 600 : 400,
+                        transition: 'background 0.15s',
+                        borderBottom: '1px solid var(--border)',
+                      }}
+                      onMouseEnter={e => { if (o.value !== sortOrder) (e.currentTarget as HTMLElement).style.background = 'var(--bg-secondary)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = o.value === sortOrder ? 'var(--accent-soft)' : 'none'; }}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Count */}
+          {totalCount !== undefined && (
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              {totalCount} item{totalCount !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="relative group w-full lg:w-auto">
-        <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest hover:opacity-50 transition-opacity">
-          Sắp xếp: {SORT_OPTIONS.find((option) => option.value === sortOrder)?.label || 'Nổi bật'} <ChevronDown size={12} />
-        </button>
-        <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-rs-border shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-40 text-right">
-          {SORT_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => onSortChange(option.value)}
-              className="block w-full text-right px-4 py-3 text-[10px] uppercase tracking-widest hover:bg-rs-gray-light"
-            >
-              {option.label}
-            </button>
-          ))}
+      {/* Filter pills */}
+      {filterOptions && onFilterSelect && filterOptions.length > 1 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 }}>
+          {filterOptions.map(opt => {
+            const isSelected = selectedFilter === opt;
+            return (
+              <button
+                key={opt}
+                onClick={() => onFilterSelect(opt)}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: 'var(--radius-full)',
+                  border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                  background: isSelected ? 'var(--accent-soft)' : 'var(--bg-card)',
+                  color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
+                  fontSize: 13,
+                  fontWeight: isSelected ? 600 : 400,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => {
+                  if (!isSelected) {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent)';
+                    (e.currentTarget as HTMLElement).style.color = 'var(--accent)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isSelected) {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
+                    (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
+                  }
+                }}
+              >
+                {opt === 'all' ? 'All' : opt}
+              </button>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 };
