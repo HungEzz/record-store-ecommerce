@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import type { ReactNode } from 'react';
 import { ShoppingBag, Clock, CheckCircle, XCircle, Truck } from 'lucide-react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -24,13 +23,6 @@ interface OrderStatsData {
 const today = new Date().toISOString().split('T')[0];
 const firstDayMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
 
-const STATUS_ICONS: Record<string, React.ReactNode> = {
-  PENDING:    <Clock size={16} />,
-  COMPLETED:  <CheckCircle size={16} />,
-  CANCELLED:  <XCircle size={16} />,
-  SHIPPED:    <Truck size={16} />,
-  PROCESSING: <ShoppingBag size={16} />,
-};
 const STATUS_COLORS: Record<string, string> = {
   PENDING:    CHART_COLORS.amber,
   COMPLETED:  CHART_COLORS.accent,
@@ -178,7 +170,7 @@ const OrderStats: React.FC = () => {
                     <YAxis tick={{ fontSize: 10, fill: '#999' }} axisLine={false} tickLine={false} />
                     <Tooltip
                       formatter={(value: unknown) => [String(value), 'Đơn hàng']}
-                      labelFormatter={(label, payload) => fmtDate(label)}
+                      labelFormatter={(label) => fmtDate(label)}
                       contentStyle={{ borderRadius: 10, border: '1px solid #e8e8e6', fontSize: 12 }}
                     />
                     <Bar dataKey="count" fill={CHART_COLORS.blue} radius={[4, 4, 0, 0]} />

@@ -136,4 +136,43 @@ export const authController = {
       res.status(500).json({ message: 'Internal Server Error' });
     }
   },
+
+  async forgotPassword(req: Request, res: Response) {
+    try {
+      const result = await authService.forgotPassword(req.body);
+      res.json(result);
+    } catch (error: any) {
+      if (
+        error.message.includes('bắt buộc') ||
+        error.message.includes('đợi') ||
+        error.message.includes('quá nhiều')
+      ) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      console.error('Forgot password error:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  },
+
+  async resetPassword(req: Request, res: Response) {
+    try {
+      const result = await authService.resetPassword(req.body);
+      res.json(result);
+    } catch (error: any) {
+      if (
+        error.message.includes('bắt buộc') ||
+        error.message.includes('OTP') ||
+        error.message.includes('hết hạn') ||
+        error.message.includes('không tồn tại') ||
+        error.message.includes('ký tự') ||
+        error.message.includes('không chính xác')
+      ) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      console.error('Reset password error:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
+    }
+  },
 };

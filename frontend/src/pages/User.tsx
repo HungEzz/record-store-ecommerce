@@ -21,6 +21,7 @@ import {
   Mail,
   RefreshCw,
   Shield,
+  KeyRound,
 } from 'lucide-react';
 import { login, logout, updateProfile as updateReduxProfile } from '../store/userSlice';
 import type { RootState } from '../store';
@@ -848,6 +849,374 @@ const OtpVerification: React.FC<{
   );
 };
 
+// ─── Forgot Password Flow ─────────────────────────────────────────────────────
+
+type ForgotStep = 'email' | 'otp' | 'newPassword';
+
+const ForgotPasswordFlow: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [step, setStep] = useState<ForgotStep>('email');
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
+
+  // Step 1: Send OTP to email
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Vui lòng nhập email hợp lệ');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await api.post('/auth/forgot-password', { email });
+      toast.success('Mã OTP đã được gửi đến email của bạn');
+      setStep('otp');
+      setCountdown(60);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // OTP input handlers
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newOtp = [...otp];
+    newOtp[index] = digit;
+    setOtp(newOtp);
+    setError('');
+    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setOtp(pasted.split(''));
+      inputRefs.current[5]?.focus();
+    }
+  };
+
+  // Step 2: Verify OTP → go to new password step
+  const handleVerifyOtp = () => {
+    const code = otp.join('');
+    if (code.length !== 6) {
+      setError('Vui lòng nhập đủ 6 chữ số');
+      return;
+    }
+    setError('');
+    setStep('newPassword');
+  };
+
+  // Auto-advance when all OTP digits entered
+  useEffect(() => {
+    if (step === 'otp' && otp.every((d) => d !== '') && otp.join('').length === 6) {
+      handleVerifyOtp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, step]);
+
+  // Resend OTP
+  const handleResend = async () => {
+    if (countdown > 0 || resending) return;
+    setResending(true);
+    setError('');
+    try {
+      await api.post('/auth/forgot-password', { email });
+      toast.success('Mã OTP mới đã được gửi');
+      setCountdown(60);
+      setOtp(Array(6).fill(''));
+      inputRefs.current[0]?.focus();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Không thể gửi lại OTP');
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // Step 3: Set new password
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 8) {
+      setError('Mật khẩu mới phải có ít nhất 8 ký tự');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await api.post('/auth/reset-password', {
+        email,
+        code: otp.join(''),
+        newPassword,
+      });
+      toast.success('Đặt lại mật khẩu thành công! Vui lòng đăng nhập.');
+      onBack();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Step configs
+  const stepConfig = {
+    email: { icon: <Mail size={28} />, title: 'Quên mật khẩu', subtitle: 'Nhập email đã đăng ký để nhận mã xác nhận' },
+    otp: { icon: <Shield size={28} />, title: 'Nhập mã OTP', subtitle: `Chúng tôi đã gửi mã 6 số đến ${maskEmail(email)}` },
+    newPassword: { icon: <KeyRound size={28} />, title: 'Tạo mật khẩu mới', subtitle: 'Nhập mật khẩu mới cho tài khoản của bạn' },
+  };
+
+  const cfg = stepConfig[step];
+
+  return (
+    <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', background: 'var(--bg-primary)' }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'linear-gradient(135deg, rgba(231,76,60,0.15) 0%, rgba(192,57,43,0.1) 100%)',
+            border: '2px solid rgba(231,76,60,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px',
+          }}>
+            <span style={{ color: '#e74c3c' }}>{cfg.icon}</span>
+          </div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, color: 'var(--text-primary)', marginBottom: 8 }}>
+            {cfg.title}
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            {cfg.subtitle}
+          </p>
+
+          {/* Step indicator */}
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 20 }}>
+            {(['email', 'otp', 'newPassword'] as ForgotStep[]).map((s, i) => (
+              <div key={s} style={{
+                width: step === s ? 28 : 8, height: 8,
+                borderRadius: 4,
+                background: step === s ? '#e74c3c' : i < ['email', 'otp', 'newPassword'].indexOf(step) ? '#e74c3c' : 'var(--border)',
+                transition: 'all 0.3s',
+              }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Step 1: Email */}
+        {step === 'email' && (
+          <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <FormField label="Email" value={email} onChange={setEmail} type="email" placeholder="email@example.com" />
+            {error && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 'var(--radius-md)' }}>
+                <AlertCircle size={14} style={{ color: 'var(--warm-rose)', flexShrink: 0 }} />
+                <p style={{ fontSize: 12, color: 'var(--warm-rose)', fontWeight: 500 }}>{error}</p>
+              </div>
+            )}
+            <button type="submit" disabled={submitting} style={{
+              marginTop: 4, width: '100%', padding: '14px',
+              background: '#e74c3c', color: '#fff',
+              border: 'none', borderRadius: 'var(--radius-full)',
+              fontSize: 14, fontWeight: 700,
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              opacity: submitting ? 0.7 : 1,
+              fontFamily: 'var(--font-sans)',
+              transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              {submitting ? (
+                <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Đang gửi...</>
+              ) : (
+                <><Mail size={14} /> Gửi mã xác nhận</>
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* Step 2: OTP */}
+        {step === 'otp' && (
+          <div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 20 }} onPaste={handleOtpPaste}>
+              {otp.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={(el) => { inputRefs.current[i] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(i, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  onFocus={(e) => e.target.select()}
+                  style={{
+                    width: 50, height: 58,
+                    textAlign: 'center',
+                    fontSize: 22, fontWeight: 800,
+                    fontFamily: "'Courier New', monospace",
+                    color: 'var(--text-primary)',
+                    background: digit ? 'rgba(231,76,60,0.06)' : 'var(--bg-card)',
+                    border: `2px solid ${error ? 'var(--warm-rose)' : digit ? '#e74c3c' : 'var(--border)'}`,
+                    borderRadius: 'var(--radius-lg)',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    caretColor: '#e74c3c',
+                  }}
+                />
+              ))}
+            </div>
+
+            {error && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginBottom: 16, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 'var(--radius-md)' }}>
+                <AlertCircle size={14} style={{ color: 'var(--warm-rose)', flexShrink: 0 }} />
+                <p style={{ fontSize: 12, color: 'var(--warm-rose)', fontWeight: 500 }}>{error}</p>
+              </div>
+            )}
+
+            <button
+              onClick={handleVerifyOtp}
+              disabled={otp.some((d) => !d)}
+              style={{
+                width: '100%', padding: '14px',
+                background: otp.every((d) => d) ? '#e74c3c' : 'var(--border)',
+                color: otp.every((d) => d) ? '#fff' : 'var(--text-muted)',
+                border: 'none', borderRadius: 'var(--radius-full)',
+                fontSize: 14, fontWeight: 700,
+                cursor: otp.some((d) => !d) ? 'not-allowed' : 'pointer',
+                fontFamily: 'var(--font-sans)',
+                transition: 'all 0.3s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <CheckCircle size={14} /> Tiếp tục
+            </button>
+
+            {/* Resend */}
+            <div style={{ textAlign: 'center', marginTop: 24 }}>
+              {countdown > 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  Gửi lại mã sau <span style={{ color: '#e74c3c', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>
+                    {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}
+                  </span>
+                </p>
+              ) : (
+                <button
+                  onClick={handleResend}
+                  disabled={resending}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontSize: 13, fontWeight: 600, color: '#e74c3c',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)',
+                    opacity: resending ? 0.6 : 1,
+                  }}
+                >
+                  <RefreshCw size={13} style={resending ? { animation: 'spin 1s linear infinite' } : undefined} />
+                  {resending ? 'Đang gửi...' : 'Gửi lại mã OTP'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: New password */}
+        {step === 'newPassword' && (
+          <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <FormField
+              label="Mật khẩu mới"
+              value={newPassword}
+              onChange={setNewPassword}
+              type={showPw ? 'text' : 'password'}
+              placeholder="Tối thiểu 8 ký tự"
+              suffix={
+                <button type="button" onClick={() => setShowPw((s) => !s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}>
+                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              }
+            />
+            <FormField
+              label="Xác nhận mật khẩu"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              type="password"
+              placeholder="••••••••"
+            />
+
+            {newPassword && (
+              <div style={{ display: 'flex', gap: 4, marginTop: -8 }}>
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: newPassword.length > i * 2 ? (newPassword.length >= 8 ? '#e74c3c' : '#f59e0b') : 'var(--border)', transition: 'background 0.3s' }} />
+                ))}
+              </div>
+            )}
+
+            {error && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', borderRadius: 'var(--radius-md)' }}>
+                <AlertCircle size={14} style={{ color: 'var(--warm-rose)', flexShrink: 0 }} />
+                <p style={{ fontSize: 12, color: 'var(--warm-rose)', fontWeight: 500 }}>{error}</p>
+              </div>
+            )}
+
+            <button type="submit" disabled={submitting} style={{
+              marginTop: 4, width: '100%', padding: '14px',
+              background: '#e74c3c', color: '#fff',
+              border: 'none', borderRadius: 'var(--radius-full)',
+              fontSize: 14, fontWeight: 700,
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              opacity: submitting ? 0.7 : 1,
+              fontFamily: 'var(--font-sans)',
+              transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+              {submitting ? (
+                <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Đang xử lý...</>
+              ) : (
+                <><KeyRound size={14} /> Đặt lại mật khẩu</>
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* Back to login */}
+        <div style={{ textAlign: 'center', marginTop: 28, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+          <button
+            onClick={step === 'otp' ? () => { setStep('email'); setError(''); } : onBack}
+            style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+          >
+            {step === 'otp' ? '← Nhập lại email' : '← Quay lại đăng nhập'}
+          </button>
+        </div>
+
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  );
+};
+
 // ─── Auth Page ────────────────────────────────────────────────────────────────
 
 const AuthPage: React.FC = () => {
@@ -864,6 +1233,9 @@ const AuthPage: React.FC = () => {
   // OTP step
   const [otpStep, setOtpStep] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
+
+  // Forgot password step
+  const [forgotStep, setForgotStep] = useState(false);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -938,6 +1310,11 @@ const AuthPage: React.FC = () => {
     }
   };
 
+  // Show Forgot Password flow
+  if (forgotStep) {
+    return <ForgotPasswordFlow onBack={() => { setForgotStep(false); setIsLogin(true); }} />;
+  }
+
   // Show OTP verification screen
   if (otpStep) {
     return (
@@ -1010,6 +1387,18 @@ const AuthPage: React.FC = () => {
               </button>
             }
           />
+
+          {isLogin && (
+            <div style={{ textAlign: 'right', marginTop: -6 }}>
+              <button
+                type="button"
+                onClick={() => setForgotStep(true)}
+                style={{ fontSize: 12, fontWeight: 600, color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
+              >
+                Quên mật khẩu?
+              </button>
+            </div>
+          )}
 
           <button
             type="submit"

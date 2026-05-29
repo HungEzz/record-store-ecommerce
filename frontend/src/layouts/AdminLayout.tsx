@@ -8,7 +8,6 @@ import {
   LogOut,
   Disc3,
   BarChart3,
-  TrendingUp,
   ChevronDown,
   DollarSign,
   ShoppingBag,

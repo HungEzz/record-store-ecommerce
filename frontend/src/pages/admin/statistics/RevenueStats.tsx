@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DollarSign, TrendingUp, ShoppingBag, BarChart2 } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer,
 } from 'recharts';
 import {
   StatCard, StatsPageHeader, ChartCard, StatsSkeleton, EmptyState,
@@ -134,7 +134,7 @@ const RevenueStats: React.FC = () => {
                   />
                   <Tooltip
                     formatter={(v: unknown) => [fmtCurrency(Number(v)), 'Doanh thu']}
-                    labelFormatter={(label, payload) => fmtDate(label)}
+                    labelFormatter={(label) => fmtDate(label)}
                     contentStyle={{ borderRadius: 10, border: '1px solid #e8e8e6', fontSize: 12 }}
                   />
                   <Line
@@ -168,7 +168,7 @@ const RevenueStats: React.FC = () => {
                   <YAxis tick={{ fontSize: 11, fill: '#999' }} axisLine={false} tickLine={false} />
                   <Tooltip
                     formatter={(v: unknown) => [Number(v), 'Đơn hàng']}
-                    labelFormatter={(label, payload) => fmtDate(label)}
+                    labelFormatter={(label) => fmtDate(label)}
                     contentStyle={{ borderRadius: 10, border: '1px solid #e8e8e6', fontSize: 12 }}
                   />
                   <Bar dataKey="count" fill={CHART_COLORS.blue} radius={[4, 4, 0, 0]} />

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart } from '../store/cartSlice';
-import { Minus, Plus, ShoppingBag, ArrowLeft, Heart, Share2, Truck, RefreshCw, Shield } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Heart, Share2, Truck, RefreshCw, Shield } from 'lucide-react';
 import FeaturedProducts from '../components/FeaturedProducts';
 import type { RootState } from '../store';
 import toast from 'react-hot-toast';

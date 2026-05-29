@@ -12,6 +12,10 @@ authRoutes.post('/login', strictLimiter, authController.login);
 authRoutes.post('/verify-otp', otpLimiter, authController.verifyOtp);
 authRoutes.post('/resend-otp', otpLimiter, authController.resendOtp);
 
+// Forgot / Reset password — uses OTP limiter for anti-spam
+authRoutes.post('/forgot-password', otpLimiter, authController.forgotPassword);
+authRoutes.post('/reset-password', otpLimiter, authController.resetPassword);
+
 // Protected routes — require valid JWT token
 authRoutes.put('/profile', verifyUser, authController.updateProfile);
 authRoutes.put('/password', verifyUser, strictLimiter, authController.changePassword);

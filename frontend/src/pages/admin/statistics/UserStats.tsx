@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, UserPlus, ShoppingBag, Crown } from 'lucide-react';
+import { Users, UserPlus, Crown } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -117,7 +117,7 @@ const UserStats: React.FC = () => {
                   <YAxis tick={{ fontSize: 11, fill: '#999' }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
                     formatter={(value: unknown) => [String(value), 'Khách mới']}
-                    labelFormatter={(label, payload) => fmtDate(label)}
+                    labelFormatter={(label) => fmtDate(label)}
                     contentStyle={{ borderRadius: 10, border: '1px solid #e8e8e6', fontSize: 12 }}
                   />
                   <Line type="monotone" dataKey="count" stroke={CHART_COLORS.purple} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />

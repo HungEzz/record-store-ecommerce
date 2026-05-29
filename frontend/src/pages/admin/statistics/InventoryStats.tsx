@@ -5,7 +5,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
-  StatCard, StatsPageHeader, ChartCard, StatsSkeleton, EmptyState,
+  StatCard, ChartCard, StatsSkeleton, EmptyState,
   useStatsData, exportToExcel, fmtCurrency,
   CHART_COLORS, PIE_COLORS, type DateFilter,
 } from '../../../components/admin/StatsUtils';

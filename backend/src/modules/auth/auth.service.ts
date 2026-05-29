@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { authRepository } from './auth.repository';
 import { otpRepository } from './otp.repository';
 import { env } from '../../config/env';
-import { sendOtpEmail } from '../../config/mail';
+import { sendOtpEmail, sendPasswordResetOtpEmail } from '../../config/mail';
 
 // Input length limits to prevent abuse
 const MAX_NAME_LENGTH = 128;
@@ -305,5 +305,111 @@ export const authService = {
     // after a password change to prevent compromised sessions from remaining active.
 
     return { message: 'Mật khẩu đã được thay đổi thành công' };
+  },
+
+  /**
+   * Forgot Password — sends a password-reset OTP to the user's email.
+   * Always returns the same success message to prevent user enumeration.
+   */
+  async forgotPassword(input: { email?: string }) {
+    const { email } = input;
+
+    if (!email) {
+      throw new Error('Email là bắt buộc');
+    }
+
+    // Generic message returned regardless of whether the email exists
+    const successMessage = 'Nếu email tồn tại trong hệ thống, mã OTP đã được gửi đến email của bạn.';
+
+    const user = await authRepository.findUserByEmail(email);
+    if (!user || !user.isVerified) {
+      // Return generic message to prevent user enumeration
+      return { message: successMessage };
+    }
+
+    // Cooldown check: 60 seconds between sends
+    const latestOtp = await otpRepository.findLatestOtp(email);
+    if (latestOtp) {
+      const elapsed = Date.now() - latestOtp.createdAt.getTime();
+      const remaining = Math.ceil((OTP_COOLDOWN_SECONDS * 1000 - elapsed) / 1000);
+      if (remaining > 0) {
+        throw new Error(`Vui lòng đợi ${remaining} giây trước khi gửi lại`);
+      }
+    }
+
+    // Rate limit: max 5 OTPs per email per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentCount = await otpRepository.countRecentOtps(email, oneHourAgo);
+    if (recentCount >= OTP_MAX_PER_HOUR) {
+      throw new Error('Bạn đã gửi quá nhiều mã OTP. Vui lòng thử lại sau 1 giờ.');
+    }
+
+    // Generate and send OTP
+    const otp = generateOtp();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    await otpRepository.createOtp(email, hashedOtp, expiresAt);
+
+    await sendPasswordResetOtpEmail(email, otp);
+
+    return { message: successMessage };
+  },
+
+  /**
+   * Reset Password — verifies OTP and sets a new password.
+   */
+  async resetPassword(input: { email?: string; code?: string; newPassword?: string }) {
+    const { email, code, newPassword } = input;
+
+    if (!email || !code || !newPassword) {
+      throw new Error('Email, mã OTP và mật khẩu mới là bắt buộc');
+    }
+
+    if (code.length !== OTP_LENGTH || !/^\d+$/.test(code)) {
+      throw new Error('Mã OTP không hợp lệ');
+    }
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      throw new Error(`Mật khẩu mới phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự`);
+    }
+
+    if (newPassword.length > MAX_PASSWORD_LENGTH) {
+      throw new Error(`Mật khẩu không được vượt quá ${MAX_PASSWORD_LENGTH} ký tự`);
+    }
+
+    const user = await authRepository.findUserByEmail(email);
+    if (!user) {
+      throw new Error('Email không tồn tại');
+    }
+
+    // Find valid (non-expired) OTPs for this email
+    const validOtps = await otpRepository.findValidOtps(email);
+    if (validOtps.length === 0) {
+      throw new Error('Mã OTP đã hết hạn. Vui lòng yêu cầu gửi lại.');
+    }
+
+    // Check the code against all valid OTPs (most recent first)
+    let matched = false;
+    for (const otp of validOtps) {
+      const isMatch = await bcrypt.compare(code, otp.code);
+      if (isMatch) {
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      throw new Error('Mã OTP không chính xác');
+    }
+
+    // Update password and clean up OTPs
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await authRepository.updatePassword(user.id, hashedPassword);
+    await otpRepository.deleteOtpsByEmail(email);
+
+    // TODO(security): Consider invalidating all active sessions/tokens
+    // after a password reset to prevent compromised sessions from remaining active.
+
+    return { message: 'Mật khẩu đã được đặt lại thành công. Vui lòng đăng nhập.' };
   },
 };

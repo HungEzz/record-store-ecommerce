@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import type { RootState, AppDispatch } from '../store';
 import { clearCart } from '../store/cartSlice';
 import { fetchProducts } from '../store/productSlice';
+import { updateProfile } from '../store/userSlice';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -162,6 +163,7 @@ const Checkout: React.FC = () => {
     setIsSubmitting(true);
     try {
       const payload = {
+        customerName: formData.fullName,
         customerEmail: formData.email,
         customerPhone: formData.phone,
         shippingAddr: `${formData.address}, ${formData.city}`,
@@ -175,6 +177,19 @@ const Checkout: React.FC = () => {
       // Clear cart and refresh product stock from DB
       dispatch(clearCart());
       dispatch(fetchProducts());
+
+      // Sync shipping info back to user profile (Redux + localStorage)
+      if (userProfile) {
+        const profileUpdates: Record<string, string> = {};
+        if (!userProfile.name && formData.fullName.trim()) profileUpdates.name = formData.fullName.trim();
+        if (!userProfile.phone && formData.phone.trim()) profileUpdates.phone = formData.phone.trim();
+        if (!userProfile.address && formData.address.trim()) {
+          profileUpdates.address = `${formData.address.trim()}, ${formData.city.trim()}`;
+        }
+        if (Object.keys(profileUpdates).length > 0) {
+          dispatch(updateProfile(profileUpdates));
+        }
+      }
 
       toast.success('Đặt hàng thành công!', {
         style: {
