@@ -64,4 +64,8 @@ export const adminService = {
   updateOrderStatus(id: string, status: string) {
     return adminRepository.updateOrderStatus(id, status);
   },
+
+  deleteOrder(id: string) {
+    return adminRepository.deleteOrder(id);
+  },
 };

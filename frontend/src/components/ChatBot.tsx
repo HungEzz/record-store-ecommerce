@@ -30,7 +30,7 @@ interface ChatApiResponse {
 // CHATBOT LOGIC (DeepSeek V3.2 via Backend with Function Calling)
 // ============================================================
 
-const API_BASE = '/api'; // Sử dụng proxy hoặc đường dẫn tương đối
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 async function getChatResponse(
   message: string,
@@ -38,7 +38,9 @@ async function getChatResponse(
   cartItems: any[]
 ): Promise<ChatApiResponse> {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== 'undefined' 
+      ? (localStorage.getItem('admin_token') || localStorage.getItem('token')) 
+      : null;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -519,7 +521,8 @@ const ChatBot: React.FC = () => {
                     padding: '10px 16px',
                     fontSize: '13px',
                     outline: 'none',
-                    background: '#000000',
+                    background: '#f4f4f5',
+                    color: '#1a1a1a',
                     fontFamily: 'inherit',
                     transition: 'border-color 0.2s',
                   }}

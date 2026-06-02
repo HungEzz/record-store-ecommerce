@@ -12,6 +12,11 @@ export const authRepository = {
       where: { id },
       data,
     }),
+  updateUnverifiedUser: (id: string, data: { password?: string; fullName?: string }) =>
+    prisma.user.update({
+      where: { id },
+      data,
+    }),
   updatePassword: (id: string, hashedPassword: string) =>
     prisma.user.update({
       where: { id },

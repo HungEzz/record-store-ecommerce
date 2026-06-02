@@ -21,4 +21,6 @@ export const env = {
   DEEPSEEK_MODEL: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
   HF_API_TOKEN: process.env.HF_API_TOKEN || '',
   HF_MODEL: process.env.HF_MODEL || 'google/flan-t5-base',
+  SMTP_USER: process.env.SMTP_USER || '',
+  SMTP_PASS: process.env.SMTP_PASS || '',
 };

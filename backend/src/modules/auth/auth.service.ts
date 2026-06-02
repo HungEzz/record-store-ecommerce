@@ -48,11 +48,17 @@ export const authService = {
 
     const existing = await authRepository.findUserByEmail(email);
     if (existing) {
-      throw new Error('Email already exists');
+      if (existing.isVerified) {
+        throw new Error('Email already exists');
+      }
+      // If the email exists but the account is NOT verified (e.g., previous SMTP failure),
+      // update the unverified user with new credentials/name instead of throwing.
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await authRepository.updateUnverifiedUser(existing.id, { password: hashedPassword, fullName });
+    } else {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await authRepository.createUser(email, hashedPassword, fullName);
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await authRepository.createUser(email, hashedPassword, fullName);
 
     // Generate and send OTP
     const otp = generateOtp();

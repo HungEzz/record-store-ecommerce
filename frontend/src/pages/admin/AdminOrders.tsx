@@ -52,7 +52,16 @@ const AdminOrders: React.FC = () => {
           <tbody className="text-sm">
             {orders.map((item) => (
               <tr key={item.id} className="border-b border-rs-border last:border-0 hover:bg-rs-gray-light/50">
-                <td className="p-5 font-bold">#{item.id.substring(0, 8)}...</td>
+                <td 
+                  className="p-5 font-bold cursor-pointer hover:text-gray-600 transition-colors" 
+                  title="Click để sao chép toàn bộ mã đơn"
+                  onClick={() => {
+                    navigator.clipboard.writeText(item.id);
+                    toast.success('Đã sao chép toàn bộ mã đơn!');
+                  }}
+                >
+                  #{item.id.substring(0, 8)}...
+                </td>
                 <td className="p-5">
                   <p className="font-bold mb-1">{item.user?.fullName || 'Khách Vãng Lai'}</p>
                   <p className="text-[10px] text-gray-500">{item.customerEmail}</p>

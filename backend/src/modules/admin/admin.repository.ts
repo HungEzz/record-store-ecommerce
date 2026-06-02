@@ -18,4 +18,16 @@ export const adminRepository = {
       where: { id },
       data: { status },
     }),
+  findOrderById: (id: string) =>
+    prisma.order.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, fullName: true, email: true } },
+        orderItems: { include: { product: true } },
+      },
+    }),
+  deleteOrder: (id: string) =>
+    prisma.order.delete({
+      where: { id },
+    }),
 };

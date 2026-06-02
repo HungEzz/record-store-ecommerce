@@ -67,7 +67,16 @@ const AdminDashboard: React.FC = () => {
               <tbody className="text-sm">
                 {recentOrders.map((order) => (
                   <tr key={order.id} className="border-b border-rs-border last:border-0">
-                    <td className="py-4 font-bold">#{order.id.split('-')[0]}...</td>
+                    <td 
+                      className="py-4 font-bold cursor-pointer hover:text-gray-600 transition-colors" 
+                      title="Click để sao chép toàn bộ mã đơn"
+                      onClick={() => {
+                        navigator.clipboard.writeText(order.id);
+                        toast.success('Đã sao chép toàn bộ mã đơn!');
+                      }}
+                    >
+                      #{order.id.split('-')[0]}...
+                    </td>
                     <td className="py-4">{order.user?.fullName || order.customerEmail}</td>
                     <td className="py-4">{new Date(order.createdAt).toLocaleDateString()}</td>
                     <td className="py-4 font-bold">${order.totalAmount.toFixed(2)}</td>
