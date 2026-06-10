@@ -26,6 +26,11 @@ if (process.env.NODE_ENV !== 'production') {
   app.use('/uploads', express.static('uploads'));
 }
 
+// Health check endpoint for monitoring & keeping backend awake (Render free tier)
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date() });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
