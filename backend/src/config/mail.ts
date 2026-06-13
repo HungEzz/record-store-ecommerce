@@ -113,13 +113,25 @@ export async function sendOtpEmail(to: string, otp: string): Promise<void> {
 </html>
   `.trim();
 
-  const transporter = await getTransporter();
-  await transporter.sendMail({
-    from: `"Classic Records" <${env.SMTP_USER}>`,
-    to,
-    subject: `[Classic Records] Mã xác thực OTP: ${otp}`,
-    html,
-  });
+  try {
+    const transporter = await getTransporter();
+    await transporter.sendMail({
+      from: `"Classic Records" <${env.SMTP_USER}>`,
+      to,
+      subject: `[Classic Records] Mã xác thực OTP: ${otp}`,
+      html,
+    });
+  } catch (error: any) {
+    console.error('Failed to send OTP email via SMTP:', error.message || error);
+    console.log(`
+========================================================================
+[MAIL FALLBACK] PHÁT HIỆN LỖI GỬI EMAIL (Có thể do Render chặn cổng SMTP)
+- Email người nhận: ${to}
+- Mã OTP của bạn: ${otp}
+Hãy sử dụng mã OTP này để hoàn tất xác thực trên giao diện web.
+========================================================================
+    `);
+  }
 }
 
 /**
@@ -179,11 +191,23 @@ export async function sendPasswordResetOtpEmail(to: string, otp: string): Promis
 </html>
   `.trim();
 
-  const transporter = await getTransporter();
-  await transporter.sendMail({
-    from: `"Classic Records" <${env.SMTP_USER}>`,
-    to,
-    subject: `[Classic Records] Mã đặt lại mật khẩu`,
-    html,
-  });
+  try {
+    const transporter = await getTransporter();
+    await transporter.sendMail({
+      from: `"Classic Records" <${env.SMTP_USER}>`,
+      to,
+      subject: `[Classic Records] Mã đặt lại mật khẩu`,
+      html,
+    });
+  } catch (error: any) {
+    console.error('Failed to send password reset email via SMTP:', error.message || error);
+    console.log(`
+========================================================================
+[MAIL FALLBACK] PHÁT HIỆN LỖI GỬI EMAIL (Có thể do Render chặn cổng SMTP)
+- Email người nhận: ${to}
+- Mã OTP đặt lại mật khẩu: ${otp}
+Hãy sử dụng mã OTP này để hoàn tất đặt lại mật khẩu.
+========================================================================
+    `);
+  }
 }

@@ -27,8 +27,8 @@ const buildSystemPrompt = (ctx: UserContext, cartItems: any[], path: string): st
   const cartSummary =
     Array.isArray(cartItems) && cartItems.length > 0
       ? `Giỏ hàng hiện tại có ${cartItems.length} sản phẩm: ${cartItems
-          .map((c: any) => `${c.title} x${c.quantity}`)
-          .join(', ')}.`
+        .map((c: any) => `${c.title} x${c.quantity}`)
+        .join(', ')}.`
       : 'Giỏ hàng đang trống.';
 
   return `Bạn là trợ lý AI của cửa hàng Classic Records (bán Vinyl, CD, Merch).
@@ -81,24 +81,94 @@ const callDeepseek = async (
   return response.json();
 };
 
+const callGemini = async (
+  systemPrompt: string,
+  history: any[],
+  message: string,
+): Promise<string> => {
+  if (!env.GEMINI_API_KEY) throw new Error('Missing GEMINI_API_KEY');
+
+  const contents = [];
+  for (const h of history) {
+    contents.push({
+      role: h.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: h.content || '' }],
+    });
+  }
+  contents.push({
+    role: 'user',
+    parts: [{ text: message }],
+  });
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.5,
+          maxOutputTokens: 1024,
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Gemini Error ${response.status}: ${body}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error('Invalid response from Gemini');
+  }
+  return text;
+};
+
 const simpleFallback = async (message: string): Promise<string> => {
   const lower = message.toLowerCase();
+  let category = '';
+  if (lower.includes('vinyl') || lower.includes('đĩa than') || lower.includes('than')) {
+    category = 'VINYL';
+  } else if (lower.includes('cd') || lower.includes('đĩa cd')) {
+    category = 'CD';
+  } else if (lower.includes('merch') || lower.includes('phụ kiện')) {
+    category = 'MERCH';
+  }
+
   try {
     const products = await productRepository.findMany();
-    const hits = products.filter((p: any) =>
-      `${p.title} ${p.artist} ${p.category}`.toLowerCase().includes(lower),
-    );
+    let hits = [];
+    
+    if (category) {
+      hits = products.filter((p: any) => p.category === category);
+    } else {
+      const words = lower.split(/\s+/).filter((w) => w.length >= 3);
+      hits = products.filter((p: any) => {
+        const text = `${p.title} ${p.artist} ${p.category}`.toLowerCase();
+        return words.some((word) => text.includes(word));
+      });
+    }
+
     if (hits.length > 0) {
       const list = hits
         .slice(0, 5)
         .map((p: any) => `• <strong>${p.title}</strong> — ${p.artist} — $${p.price}`)
         .join('<br/>');
-      return `Mình tạm chưa kết nối được AI, nhưng đây là kết quả tìm được:<br/>${list}`;
+      return `Hiện tại kết nối AI đang gián đoạn, dưới đây là một số sản phẩm phù hợp tìm thấy trong hệ thống:<br/>${list}`;
     }
-  } catch {
-    /* ignore */
+  } catch (err) {
+    console.error('Fallback search failed:', err);
   }
-  return 'Xin lỗi, hiện mình chưa kết nối được dịch vụ AI. Vui lòng thử lại sau hoặc liên hệ hotline 1800-CLASSIC.';
+  return 'Xin lỗi bạn, hiện tại hệ thống AI đang bận hoặc chưa được cấu hình khóa API (DEEPSEEK_API_KEY / GEMINI_API_KEY). Bạn vui lòng thử lại sau hoặc liên hệ Hotline 1800-CLASSIC để được hỗ trợ nhanh nhất nhé!';
 };
 
 export interface ChatActionPayload {
@@ -119,87 +189,99 @@ export const chatService = {
     context: any = {},
     userCtx: UserContext = { userId: null, role: 'GUEST' },
   ): Promise<ChatResult> => {
-    if (!env.DEEPSEEK_API_KEY) {
-      return { response: await simpleFallback(message), actions: [] };
-    }
-
     const cartItems = Array.isArray(context?.cart) ? context.cart : [];
     const path = context?.path || '';
+    const systemPrompt = buildSystemPrompt(userCtx, cartItems, path);
 
-    const tools = getToolsForRole(userCtx.role).map((t) => ({
-      type: t.type,
-      function: t.function,
-    }));
-
-    const systemMsg: ChatMessage = {
-      role: 'system',
-      content: buildSystemPrompt(userCtx, cartItems, path),
-    };
-
-    const recentHistory: ChatMessage[] = (history || [])
-      .slice(-8)
-      .map((h: any) => ({
-        role: h.role === 'assistant' ? 'assistant' : 'user',
-        content: String(h.content || ''),
+    // 1. Try DeepSeek if configured
+    if (env.DEEPSEEK_API_KEY) {
+      const tools = getToolsForRole(userCtx.role).map((t) => ({
+        type: t.type,
+        function: t.function,
       }));
 
-    const messages: ChatMessage[] = [
-      systemMsg,
-      ...recentHistory,
-      { role: 'user', content: message },
-    ];
+      const systemMsg: ChatMessage = {
+        role: 'system',
+        content: systemPrompt,
+      };
 
-    const collectedActions: ChatActionPayload[] = [];
+      const recentHistory: ChatMessage[] = (history || [])
+        .slice(-8)
+        .map((h: any) => ({
+          role: h.role === 'assistant' ? 'assistant' : 'user',
+          content: String(h.content || ''),
+        }));
 
-    try {
-      for (let hop = 0; hop < MAX_TOOL_HOPS; hop++) {
-        const data = await callDeepseek(messages, tools);
-        const choice = data?.choices?.[0];
-        const aiMessage = choice?.message;
-        if (!aiMessage) break;
+      const messages: ChatMessage[] = [
+        systemMsg,
+        ...recentHistory,
+        { role: 'user', content: message },
+      ];
 
-        const toolCalls = aiMessage.tool_calls;
+      const collectedActions: ChatActionPayload[] = [];
 
-        if (toolCalls && toolCalls.length > 0) {
-          messages.push({
-            role: 'assistant',
-            content: aiMessage.content ?? null,
-            tool_calls: toolCalls,
-          });
+      try {
+        for (let hop = 0; hop < MAX_TOOL_HOPS; hop++) {
+          const data = await callDeepseek(messages, tools);
+          const choice = data?.choices?.[0];
+          const aiMessage = choice?.message;
+          if (!aiMessage) break;
 
-          for (const call of toolCalls) {
-            let args: any = {};
-            try {
-              args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
-            } catch {
-              args = {};
-            }
-            const { result, action } = await executeTool(call.function.name, args, userCtx);
-            if (action) collectedActions.push(action as ChatActionPayload);
+          const toolCalls = aiMessage.tool_calls;
+
+          if (toolCalls && toolCalls.length > 0) {
             messages.push({
-              role: 'tool',
-              tool_call_id: call.id,
-              name: call.function.name,
-              content: JSON.stringify(result),
+              role: 'assistant',
+              content: aiMessage.content ?? null,
+              tool_calls: toolCalls,
             });
-          }
-          continue;
-        }
 
+            for (const call of toolCalls) {
+              let args: any = {};
+              try {
+                args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+              } catch {
+                args = {};
+              }
+              const { result, action } = await executeTool(call.function.name, args, userCtx);
+              if (action) collectedActions.push(action as ChatActionPayload);
+              messages.push({
+                role: 'tool',
+                tool_call_id: call.id,
+                name: call.function.name,
+                content: JSON.stringify(result),
+              });
+            }
+            continue;
+          }
+
+          return {
+            response:
+              (aiMessage.content as string) || 'Mình chưa rõ câu hỏi, bạn nói lại giúp nhé.',
+            actions: collectedActions,
+          };
+        }
         return {
           response:
-            (aiMessage.content as string) || 'Mình chưa rõ câu hỏi, bạn nói lại giúp nhé.',
+            'Mình cần nhiều bước hơn để xử lý. Bạn có thể tách câu hỏi thành các phần nhỏ giúp mình không?',
           actions: collectedActions,
         };
+      } catch (err: any) {
+        console.error('DeepSeek chat failed, trying Gemini backup...', err?.message || err);
       }
-      return {
-        response:
-          'Mình cần nhiều bước hơn để xử lý. Bạn có thể tách câu hỏi thành các phần nhỏ giúp mình không?',
-        actions: collectedActions,
-      };
-    } catch (err: any) {
-      console.error('DeepSeek chat error:', err?.message || err);
-      return { response: await simpleFallback(message), actions: collectedActions };
     }
+
+    // 2. Try Gemini backup if configured
+    if (env.GEMINI_API_KEY) {
+      try {
+        const responseText = await callGemini(systemPrompt, history || [], message);
+        return { response: responseText, actions: [] };
+      } catch (err: any) {
+        console.error('Gemini chat backup failed:', err?.message || err);
+      }
+    }
+
+    // 3. Fallback to smart local product matching
+    return { response: await simpleFallback(message), actions: [] };
   },
 };
