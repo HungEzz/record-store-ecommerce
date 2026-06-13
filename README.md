@@ -48,7 +48,7 @@
 
 <p align="center">
   <img src="./.github/screenshots/chatbot.gif" width="45%" alt="AI Chatbot Support" style="border-radius: 8px;" />
-  <img src="./.github/screenshots/checkout.gif" width="45%" alt="Atomic Checkout Flow" style="border-radius: 8px;" />
+  <img src="./.github/screenshots/checkout.png" width="45%" alt="Atomic Checkout Flow" style="border-radius: 8px;" />
 </p>
 <p align="center">
   <em>Interactive Flows: AI Chatbot Support (Left) & OTP Auth/Atomic Checkout (Right)</em>
