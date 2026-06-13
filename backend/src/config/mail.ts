@@ -1,5 +1,10 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 import { env } from './env';
+
+// Force DNS resolution to prefer IPv4. This solves the ENETUNREACH/ETIMEDOUT issues
+// on cloud environments like Render where IPv6 is unresolved/unrouted.
+dns.setDefaultResultOrder('ipv4first');
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
