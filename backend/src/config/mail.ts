@@ -5,6 +5,7 @@ const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
+  family: 4, // Force IPv4 to fix ENETUNREACH/ETIMEDOUT on platforms like Render that do not support IPv6 routing
   auth: {
     user: env.SMTP_USER,
     pass: env.SMTP_PASS,
