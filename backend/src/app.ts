@@ -31,6 +31,51 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
+// Diagnostic endpoint to check AI keys and connectivity directly from Render
+app.get('/api/test-ai', async (_req, res) => {
+  const results: any = {};
+  
+  try {
+    results.deepseekKeyLength = env.DEEPSEEK_API_KEY ? env.DEEPSEEK_API_KEY.length : 0;
+    const dsRes = await fetch(env.DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.DEEPSEEK_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: env.DEEPSEEK_MODEL,
+        messages: [{ role: 'user', content: 'Hello' }],
+        max_tokens: 10,
+      }),
+    });
+    results.deepseekStatus = dsRes.status;
+    results.deepseekBody = await dsRes.json();
+  } catch (err: any) {
+    results.deepseekError = err.message || err;
+  }
+
+  try {
+    results.geminiKeyLength = env.GEMINI_API_KEY ? env.GEMINI_API_KEY.length : 0;
+    const gemRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Hello' }] }]
+        }),
+      }
+    );
+    results.geminiStatus = gemRes.status;
+    results.geminiBody = await gemRes.json();
+  } catch (err: any) {
+    results.geminiError = err.message || err;
+  }
+
+  res.json(results);
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
