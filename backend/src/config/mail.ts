@@ -2,26 +2,58 @@ import nodemailer from 'nodemailer';
 import dns from 'dns';
 import { env } from './env';
 
-// Force DNS resolution to prefer IPv4. This solves the ENETUNREACH/ETIMEDOUT issues
-// on cloud environments like Render where IPv6 is unresolved/unrouted.
-dns.setDefaultResultOrder('ipv4first');
+// Cache the transporter and resolved IP to avoid DNS queries on every send
+let cachedTransporter: nodemailer.Transporter | null = null;
+let lastResolvedIp: string | null = null;
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Use STARTTLS on port 587 (more reliable on cloud hosting WAFs/firewalls)
-  auth: {
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-  // Strictly force IPv4 resolution by overriding the DNS lookup at the socket connection level
-  lookup: (hostname, options, callback) => {
-    dns.lookup(hostname, { family: 4 }, callback);
-  },
-});
+async function getTransporter(): Promise<nodemailer.Transporter> {
+  try {
+    // Force resolving smtp.gmail.com via IPv4 exclusively
+    const ips = await dns.promises.resolve4('smtp.gmail.com');
+    if (ips && ips.length > 0) {
+      const ip = ips[0];
+      
+      if (cachedTransporter && lastResolvedIp === ip) {
+        return cachedTransporter;
+      }
+      
+      lastResolvedIp = ip;
+      cachedTransporter = nodemailer.createTransport({
+        host: ip,
+        port: 587,
+        secure: false, // Use STARTTLS on port 587
+        auth: {
+          user: env.SMTP_USER,
+          pass: env.SMTP_PASS,
+        },
+        tls: {
+          rejectUnauthorized: false,
+          servername: 'smtp.gmail.com', // Crucial for matching TLS certificate of Gmail SMTP
+        },
+      });
+      return cachedTransporter;
+    }
+  } catch (error) {
+    console.error('Failed to resolve smtp.gmail.com via IPv4, falling back to hostname resolution:', error);
+  }
+
+  // Fallback if DNS resolution fails
+  if (!cachedTransporter) {
+    cachedTransporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: env.SMTP_USER,
+        pass: env.SMTP_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+  }
+  return cachedTransporter;
+}
 
 /**
  * Send OTP verification email with a styled HTML template.
@@ -81,6 +113,7 @@ export async function sendOtpEmail(to: string, otp: string): Promise<void> {
 </html>
   `.trim();
 
+  const transporter = await getTransporter();
   await transporter.sendMail({
     from: `"Classic Records" <${env.SMTP_USER}>`,
     to,
@@ -146,6 +179,7 @@ export async function sendPasswordResetOtpEmail(to: string, otp: string): Promis
 </html>
   `.trim();
 
+  const transporter = await getTransporter();
   await transporter.sendMail({
     from: `"Classic Records" <${env.SMTP_USER}>`,
     to,
